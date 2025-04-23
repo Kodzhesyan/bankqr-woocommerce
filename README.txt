@@ -1,5 +1,5 @@
 === IBAN Payment for Ukraine ===
-Contributors: yourname
+Contributors: Roman Kodzhesyan
 Tags: woocommerce, payment gateway, ukraine, bank-qr, iban
 Requires at least: 5.0
 Tested up to: 6.4
