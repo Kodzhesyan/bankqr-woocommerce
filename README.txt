@@ -34,5 +34,9 @@ Bank-QR Payment Gateway додає можливість оплати через 
 
 == Changelog ==
 
+= 1.0.1 =
+* Інтеграцію зроблено опціональною.
+
+
 = 1.0.0 =
 * Initial release
