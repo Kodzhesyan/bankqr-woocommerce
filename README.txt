@@ -36,6 +36,8 @@ Bank-QR Payment Gateway додає можливість оплати через 
 
 = 1.0.1 =
 * Інтеграцію зроблено опціональною.
+* add date and site URL to payment details
+
 
 
 = 1.0.0 =

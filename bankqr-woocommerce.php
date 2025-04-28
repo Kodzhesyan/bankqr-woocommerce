@@ -104,10 +104,20 @@ add_action( 'plugins_loaded', function () {
 				return $cached;
 			}
 
+			// Формуємо призначення платежу з датою та URL
+			$date = date('d.m.Y');
+			$site_url = parse_url(home_url(), PHP_URL_HOST);
+			$purpose = sprintf(
+				'Оплата замовлення №%s від %s на %s',
+				$order->get_id(),
+				$date,
+				$site_url
+			);
+
 			$body = [
 				'account'     => $this->iban,
 				'amount'      => $order->get_total(),
-				'description' => 'Оплата замовлення №' . $order->get_id(),
+				'description' => $purpose,
 				'name'        => $this->name,
 				'code'        => $this->code,
 			];
@@ -132,7 +142,15 @@ add_action( 'plugins_loaded', function () {
 
 		// ───────────── Банківські реквізити HTML ──
 		private function details_html( $order_id ) {
-			$purpose = 'Оплата замовлення №' . $order_id;
+			$date = date('d.m.Y');
+			$site_url = parse_url(home_url(), PHP_URL_HOST);
+			$purpose = sprintf(
+				'Оплата замовлення №%s від %s на %s',
+				$order_id,
+				$date,
+				$site_url
+			);
+
 			return '<ul class="wc-bacs-bank-details order_details bacs-details">'
 				. '<li>' . __( 'Отримувач', 'bankqr-gateway' ) . ': <strong>' . esc_html( $this->name ) . '</strong></li>'
 				. '<li>IBAN: <strong>' . esc_html( $this->iban ) . '</strong></li>'
