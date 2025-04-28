@@ -53,6 +53,7 @@ add_action( 'plugins_loaded', function () {
 			$this->api_key     = $this->get_option( 'api_key' );
 			$this->name        = $this->get_option( 'name' );
 			$this->code        = $this->get_option( 'code' );
+			$this->use_api     = $this->get_option( 'use_api' ) === 'yes';
 
 			add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, [ $this, 'process_admin_options' ] );
 			add_action( 'woocommerce_thankyou_' . $this->id, [ $this, 'thankyou_page' ] );
@@ -68,6 +69,13 @@ add_action( 'plugins_loaded', function () {
 					'label'   => __( 'Увімкнути Bank‑QR', 'bankqr-gateway' ),
 					'default' => 'yes',
 				],
+				'use_api' => [
+					'title'   => __( 'Використовувати API', 'bankqr-gateway' ),
+					'type'    => 'checkbox',
+					'label'   => __( 'Увімкнути інтеграцію з API Bank‑QR', 'bankqr-gateway' ),
+					'default' => 'no',
+					'description' => __( 'При вимкненні будуть показані тільки реквізити без QR-коду', 'bankqr-gateway' ),
+				],
 				'title' => [
 					'title'   => __( 'Заголовок', 'bankqr-gateway' ),
 					'type'    => 'text',
@@ -81,7 +89,11 @@ add_action( 'plugins_loaded', function () {
 				'iban'    => [ 'title' => 'IBAN', 'type' => 'text' ],
 				'name'    => [ 'title' => __( 'Отримувач', 'bankqr-gateway' ), 'type' => 'text' ],
 				'code'    => [ 'title' => __( 'Код отримувача', 'bankqr-gateway' ), 'type' => 'text' ],
-				'api_key' => [ 'title' => 'API‑KEY', 'type' => 'text' ],
+				'api_key' => [ 
+					'title' => 'API‑KEY', 
+					'type' => 'text',
+					'description' => __( 'Потрібен тільки якщо увімкнена інтеграція з API', 'bankqr-gateway' ),
+				],
 			];
 		}
 
@@ -140,55 +152,57 @@ add_action( 'plugins_loaded', function () {
 		// ───────────── Thank‑you page ─────────────
 		public function thankyou_page( $order_id ) {
 			$order = wc_get_order( $order_id );
-			$payment_url = $this->get_payment_url( $order );
-
+			
 			echo '<section class="woocommerce-bacs-instructions"><h2>' . __( 'Реквізити для оплати', 'bankqr-gateway' ) . '</h2>';
 			echo $this->details_html( $order_id ) . '</section>';
 
-			if ( $payment_url ) {
-				// Добавляем сообщение о переадресації
-				echo '<div id="bankqr-redirect-message" style="text-align:center; margin:10px 0;">' . 
-					 __( 'Переадресація на сторінку оплати через <span>3</span> секунди...', 'bankqr-gateway' ) . 
-					 '</div>';
-				
-				// Кнопка оплаты
-				echo '<p style="text-align:center; margin:20px 0;">' .
-					 '<a href="' . esc_url( $payment_url ) . '" class="button alt" id="bankqr-payment-button" ' . 
-					 'style="background:#2ecc71; color:#fff; padding:10px 20px; border:none; border-radius:5px; text-decoration:none;">' .
-					 __( 'Перейти до оплати', 'bankqr-gateway' ) . '</a></p>';
+			if ( $this->use_api ) {
+				$payment_url = $this->get_payment_url( $order );
+				if ( $payment_url ) {
+					// Добавляем сообщение о переадресації
+					echo '<div id="bankqr-redirect-message" style="text-align:center; margin:10px 0;">' . 
+						 __( 'Переадресація на сторінку оплати через <span>3</span> секунди...', 'bankqr-gateway' ) . 
+						 '</div>';
+					
+					// Кнопка оплаты
+					echo '<p style="text-align:center; margin:20px 0;">' .
+						 '<a href="' . esc_url( $payment_url ) . '" class="button alt" id="bankqr-payment-button" ' . 
+						 'style="background:#2ecc71; color:#fff; padding:10px 20px; border:none; border-radius:5px; text-decoration:none;">' .
+						 __( 'Перейти до оплати', 'bankqr-gateway' ) . '</a></p>';
 
-				// Обновленный скрипт для перенаправления
-				?>
-				<script type="text/javascript">
-					document.addEventListener('DOMContentLoaded', function() {
-						var seconds = 3;
-						var paymentUrl = '<?php echo esc_js($payment_url); ?>';
-						var countdownEl = document.querySelector('#bankqr-redirect-message span');
-						var redirectInitiated = false;
-						
-						var timer = setInterval(function() {
-							seconds--;
-							if (countdownEl) {
-								countdownEl.textContent = seconds;
-							}
+					// Обновленный скрипт для перенаправления
+					?>
+					<script type="text/javascript">
+						document.addEventListener('DOMContentLoaded', function() {
+							var seconds = 3;
+							var paymentUrl = '<?php echo esc_js($payment_url); ?>';
+							var countdownEl = document.querySelector('#bankqr-redirect-message span');
+							var redirectInitiated = false;
 							
-							if (seconds <= 0 && !redirectInitiated) {
-								clearInterval(timer);
-								redirectInitiated = true;
-								// Перенаправляем на страницу оплаты
-								window.location.href = paymentUrl;
-							}
-						}, 1000);
+							var timer = setInterval(function() {
+								seconds--;
+								if (countdownEl) {
+									countdownEl.textContent = seconds;
+								}
+								
+								if (seconds <= 0 && !redirectInitiated) {
+									clearInterval(timer);
+									redirectInitiated = true;
+									// Перенаправляем на страницу оплаты
+									window.location.href = paymentUrl;
+								}
+							}, 1000);
 
-						// Обработчик клика по кнопке
-						document.querySelector('#bankqr-payment-button').addEventListener('click', function(e) {
-							clearInterval(timer);
-							document.querySelector('#bankqr-redirect-message').style.display = 'none';
-							redirectInitiated = true;
+							// Обработчик клика по кнопке
+							document.querySelector('#bankqr-payment-button').addEventListener('click', function(e) {
+								clearInterval(timer);
+								document.querySelector('#bankqr-redirect-message').style.display = 'none';
+								redirectInitiated = true;
+							});
 						});
-					});
-				</script>
-				<?php
+					</script>
+					<?php
+				}
 			}
 		}
 
@@ -198,18 +212,19 @@ add_action( 'plugins_loaded', function () {
 				return;
 			}
 
-			$payment_url = $this->get_payment_url( $order );
-
 			echo '<section class="woocommerce-bacs-instructions"><h2>' . __( 'Реквізити для оплати', 'bankqr-gateway' ) . '</h2>';
 			echo $this->details_html( $order->get_id() ) . '</section>';
 
-			if ( $payment_url ) {
-				if ( $plain_text ) {
-					echo PHP_EOL . __( 'Посилання для оплати:', 'bankqr-gateway' ) . ' ' . esc_url( $payment_url ) . PHP_EOL;
-				} else {
-					echo '<p style="text-align:center; margin:20px 0;">'
-						. '<a href="' . esc_url( $payment_url ) . '" class="button alt" target="_blank" style="background:#2ecc71; color:#fff; padding:10px 20px; border:none; border-radius:5px; text-decoration:none;">'
-						. __( 'Перейти до оплати', 'bankqr-gateway' ) . '</a></p>';
+			if ( $this->use_api ) {
+				$payment_url = $this->get_payment_url( $order );
+				if ( $payment_url ) {
+					if ( $plain_text ) {
+						echo PHP_EOL . __( 'Посилання для оплати:', 'bankqr-gateway' ) . ' ' . esc_url( $payment_url ) . PHP_EOL;
+					} else {
+						echo '<p style="text-align:center; margin:20px 0;">'
+							. '<a href="' . esc_url( $payment_url ) . '" class="button alt" target="_blank" style="background:#2ecc71; color:#fff; padding:10px 20px; border:none; border-radius:5px; text-decoration:none;">'
+							. __( 'Перейти до оплати', 'bankqr-gateway' ) . '</a></p>';
+					}
 				}
 			}
 		}
@@ -217,8 +232,8 @@ add_action( 'plugins_loaded', function () {
 		// ───────────── Validation methods ─────────
 		public function validate_api_key_field($key, $value) {
 			$value = sanitize_text_field($value);
-			if (empty($value)) {
-				WC_Admin_Settings::add_error(__('API ключ обов\'язковий', 'bankqr-gateway'));
+			if ($this->get_option('use_api') === 'yes' && empty($value)) {
+				WC_Admin_Settings::add_error(__('API ключ обов\'язковий при використанні API', 'bankqr-gateway'));
 				return '';
 			}
 			return $value;
