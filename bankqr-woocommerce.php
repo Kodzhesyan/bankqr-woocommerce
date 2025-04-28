@@ -2,7 +2,7 @@
 /**
  * Plugin Name: IBAN Payment for Ukraine
 * Description: Додає спосіб оплати через IBAN для українських банків з інтеграцією платіжного шлюзу bank-qr.com.ua
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Roman Kodzhesian
  * Author URI: https://www.facebook.com/roman.kodzhesyan
  * Text Domain: bankqr-gateway
